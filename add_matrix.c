@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LIMITE 10
+#define LIMITE 500
 
 int init_matrix(int m[][LIMITE], int valor){
 	int i, j;
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
 	int world_size;
 	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
 	// We are assuming at least 2 processes for this task
-	if (world_size != 3 ) {
+	if (world_size != 4 ) {
 		fprintf(stderr, "World size must be equal 4 for %s\n", argv[0]);
 		MPI_Abort(MPI_COMM_WORLD, 1);
 	}
@@ -71,27 +71,43 @@ int main(int argc, char** argv) {
 	init_matrix(C,0);
 
 	int number;
+	
 	if (world_rank == 0) {
 		// If we are rank 0, set the number to -1 and send it to process 1
-		somar_matriz(A,B,C,0,5,0,5);
+		somar_matriz(A,B,C,0,LIMITE/2,0,LIMITE/2);
 		//mostrar_matriz(C);
-		
-		MPI_Send(C, 100, MPI_INT, 2, 0, MPI_COMM_WORLD);
+
+		int C2[LIMITE][LIMITE];
+
+		MPI_Recv(C2, LIMITE*LIMITE, MPI_INT, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		merge_matrix(C, C2, 0,LIMITE/2,LIMITE/2,LIMITE);
+
+		MPI_Recv(C2, LIMITE*LIMITE, MPI_INT, 2, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		merge_matrix(C, C2, LIMITE/2,LIMITE,0,LIMITE/2);
+
+		MPI_Recv(C2, LIMITE*LIMITE, MPI_INT, 3, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		merge_matrix(C, C2, LIMITE/2,LIMITE,LIMITE/2,LIMITE);
+
+		mostrar_matriz(C);
 		
 	} else if (world_rank == 1) {
-		somar_matriz(A,B,C,5,10,5,10);
-		MPI_Send(C, 100, MPI_INT, 2, 0, MPI_COMM_WORLD);
+		
+		somar_matriz(A,B,C,0,LIMITE/2,LIMITE/2,LIMITE);
+		
+		MPI_Send(C, LIMITE*LIMITE, MPI_INT, 0, 0, MPI_COMM_WORLD);
 		
 	}else if (world_rank == 2) {
 		
-		int C2[LIMITE][LIMITE];
-
-		MPI_Recv(C, 100, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		MPI_Recv(C2, 100, MPI_INT, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		//printf("\n");
-		merge_matrix(C, C2, 5, 10, 5, 10);
-		mostrar_matriz(C);
-
+		somar_matriz(A,B,C,LIMITE/2,LIMITE,0,LIMITE/2);
+		
+		MPI_Send(C, LIMITE*LIMITE, MPI_INT, 0, 0, MPI_COMM_WORLD);
+		
+	}else if (world_rank == 3) {
+		
+		somar_matriz(A,B,C,LIMITE/2,LIMITE,LIMITE/2,LIMITE);
+		
+		MPI_Send(C, LIMITE*LIMITE, MPI_INT, 0, 0, MPI_COMM_WORLD);
+		
 	}
 MPI_Finalize();
 
